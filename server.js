@@ -14,7 +14,7 @@ app.use(session({
 }));
 
 // 連接到 SQLite 資料庫
-const db = new sqlite3.Database('./threads.db', (err) => {
+const db = new sqlite3.Database(':memory:', (err) => {
   if (err) console.error('資料庫連接失敗:', err.message);
   else console.log('已連接到 SQLite 資料庫');
 });
