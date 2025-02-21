@@ -1,0 +1,186 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+    background: #f5f5f5;
+    padding: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+#homeLogo {
+    width: 50px;
+    height: 50px;
+    cursor: pointer;
+    margin-right: 10px;
+    transition: transform 0.3s;
+}
+
+#homeLogo:hover {
+    transform: scale(1.1);
+}
+
+h1 {
+    font-size: 24px;
+    color: #333;
+    text-align: center;
+}
+
+#auth {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+#auth input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+#auth button, #postForm button, .interactions button, .comment-form button {
+    padding: 8px 15px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.3s;
+    margin-right: 10px;
+}
+
+#auth button:hover, #postForm button:hover, .interactions button:hover, .comment-form button:hover {
+    background: #0056b3;
+}
+
+#logoutBtn {
+    background: #dc3545;
+}
+
+#logoutBtn:hover {
+    background: #b02a37;
+}
+
+#userStatus {
+    margin-top: 10px;
+    color: #666;
+    text-align: center;
+}
+
+#postForm {
+    margin-bottom: 20px;
+}
+
+#content {
+    width: 100%;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    resize: none;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+    margin-bottom: 10px;
+}
+
+.post {
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 15px;
+    opacity: 0;
+    animation: fadeIn 0.5s ease forwards;
+}
+
+.post p {
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.post small {
+    font-size: 12px;
+    color: #777;
+}
+
+.interactions button {
+    padding: 8px 15px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.3s;
+    margin-right: 10px;
+}
+
+.interactions button.liked {
+    background: #dc3545;
+}
+
+.interactions button:hover {
+    background: #0056b3;
+}
+
+.interactions button.liked:hover {
+    background: #b02a37;
+}
+
+.comment-form {
+    margin-top: 10px;
+}
+
+.comment-form textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    resize: none;
+    margin-bottom: 10px;
+}
+
+.comments {
+    margin-top: 10px;
+}
+
+.comment {
+    padding: 10px;
+    border-top: 1px solid #eee;
+    font-size: 14px;
+}
+
+.comment p {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 5px;
+}
+
+.comment small {
+    font-size: 12px;
+    color: #888;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

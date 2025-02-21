@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>threadnt</title>
+    <link rel="stylesheet" href="ui.css">
+</head>
+<body>
+    <header>
+        <img src="https://www.allrecipes.com/thmb/WyCC-RL8cuAEKfYHsdnzqi64iTc=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/73135-homestyle-potato-chips-ddmfs-0348-3x4-hero-c21021303c8849bbb40c1007bfa9af6e.jpg" alt="首頁" id="homeLogo" onclick="refreshAndScrollToTop()">
+        <h1>不脆</h1>
+    </header>
+    <div id="auth">
+        <input id="username" placeholder="用戶名" />
+        <input id="password" type="password" placeholder="密碼" />
+        <button onclick="register()">註冊</button>
+        <button onclick="login()">登入</button>
+        <button onclick="logout()" id="logoutBtn" style="display: none;">登出</button>
+        <p id="userStatus"></p>
+    </div>
+    <div id="postForm" style="display: none;">
+        <textarea id="content" placeholder="分享你的想法..."></textarea>
+        <button onclick="submitPost()">發帖</button>
+    </div>
+    <div id="posts"></div>
+
+    <script>
+        async function checkUser() {
+            const response = await fetch('/user');
+            const userStatus = document.getElementById('userStatus');
+            const postForm = document.getElementById('postForm');
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (response.ok) {
+                const user = await response.json();
+                userStatus.textContent = `歡迎，${user.username}`;
+                postForm.style.display = 'block';
+                logoutBtn.style.display = 'inline';
+            } else {
+                userStatus.textContent = '請登入';
+                postForm.style.display = 'none';
+                logoutBtn.style.display = 'none';
+            }
+        }
+
+        async function register() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const response = await fetch('/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const result = await response.json();
+            alert(response.ok ? result.message : result.error);
+            if (response.ok) checkUser();
+        }
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const result = await response.json();
+            alert(response.ok ? result.message : result.error);
+            if (response.ok) {
+                checkUser();
+                loadPosts();
+            }
+        }
+
+        async function logout() {
+            await fetch('/logout', { method: 'POST' });
+            alert('已登出');
+            checkUser();
+            loadPosts();
+        }
+
+        async function loadPosts() {
+    const response = await fetch('/posts');
+    const posts = await response.json();
+    const userResponse = await fetch('/user');
+    const user = userResponse.ok ? await userResponse.json() : null;
+    const postsDiv = document.getElementById('posts');
+    postsDiv.innerHTML = posts.map(post => {
+        const isLiked = user && post.likes && post.likes.some(like => like.user_id === req.session.user.id);
+        return `
+            <div class="post">
+                <p>${post.content}</p>
+                <small>by ${post.username} at ${new Date(post.created_at).toLocaleString()}</small>
+                <div class="interactions">
+                    <button onclick="likePost(${post.id})" class="${isLiked ? 'liked' : ''}">
+                        ${isLiked ? '取消讚' : '讚'} (${post.like_count})
+                    </button>
+                    <button onclick="showCommentForm(${post.id})">留言 (${post.comments.length})</button>
+                </div>
+                <div id="comment-form-${post.id}" class="comment-form" style="display: none;">
+                    <textarea id="comment-${post.id}" placeholder="寫下你的留言..."></textarea>
+                    <button onclick="submitComment(${post.id})">送出</button>
+                </div>
+                <div class="comments">
+                    ${post.comments.map(comment => `
+                        <div class="comment">
+                            <p>${comment.content}</p>
+                            <small>by ${comment.username} at ${new Date(comment.created_at).toLocaleString()}</small>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function likePost(postId) {
+    const response = await fetch(`/posts/${postId}/like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    });
+    const result = await response.json();
+    alert(response.ok ? result.message : result.error);
+    if (response.ok) loadPosts();
+}
+
+        async function submitPost() {
+            const content = document.getElementById('content').value;
+            if (!content) {
+                alert('請輸入內容！');
+                return;
+            }
+            const response = await fetch('/posts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+            if (response.ok) {
+                document.getElementById('content').value = '';
+                loadPosts();
+            } else {
+                const result = await response.json();
+                alert(result.error);
+            }
+        }
+
+        async function likePost(postId) {
+            const response = await fetch(`/posts/${postId}/like`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const result = await response.json();
+            alert(response.ok ? result.message : result.error);
+            if (response.ok) loadPosts();
+        }
+
+        function showCommentForm(postId) {
+            const form = document.getElementById(`comment-form-${postId}`);
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function submitComment(postId) {
+            const content = document.getElementById(`comment-${postId}`).value;
+            if (!content) {
+                alert('請輸入留言內容！');
+                return;
+            }
+            const response = await fetch(`/posts/${postId}/comment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+            if (response.ok) {
+                document.getElementById(`comment-${postId}`).value = '';
+                loadPosts();
+            } else {
+                const result = await response.json();
+                alert(result.error);
+            }
+        }
+
+        function refreshAndScrollToTop() {
+            loadPosts();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        checkUser();
+        loadPosts();
+    </script>
+</body>
+</html>
