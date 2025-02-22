@@ -82,62 +82,63 @@
                 document.getElementById('emailVerificationCode').value = '';
             }
         }
+
+        async function loadProfile() {
+            const currentUserResponse = await fetch('/user');
+            if (!currentUserResponse.ok) {
+                window.location.href = '/';
+                return;
+            }
+            const currentUser = await currentUserResponse.json();
+            document.getElementById('currentUser').textContent = `當前用戶: ${currentUser.username}`;
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetUsername = urlParams.get('username');
+            const isCurrentUser = !targetUsername;
+
+            let apiUrl = isCurrentUser ? '/user/posts' : `/profile/${targetUsername}`;
+            const response = await fetch(apiUrl);
+            if (!response.ok) {
+                window.location.href = '/';
+                return;
+            }
+            const data = await response.json();
+
+            const user = isCurrentUser ? currentUser : data.user;
+            const posts = isCurrentUser ? data : data.posts;
+
+            document.getElementById('username').textContent = `用戶名稱: ${user.username}`;
+            document.getElementById('avatar').src = user.avatar_url || '/default-avatar.jpg';
+
+            if (isCurrentUser) {
+                document.getElementById('editSection').style.display = 'block';
+            } else {
+                document.getElementById('editSection').style.display = 'none';
+            }
+            loadPosts(posts);
+        }
         function loadPosts(posts) {
-        const postsDiv = document.getElementById('userPosts');
-        postsDiv.innerHTML = posts.map(post => `
-            <div class="post">
-                <p>${post.content}</p>
-                ${post.image_url ? `<img src="${post.image_url}" alt="貼文圖片" class="post-image">` : ''}
-                <small>發布時間: ${new Date(post.created_at).toLocaleString()}</small>
-                <div class="interactions">
-                    ${post.username === document.getElementById('currentUser').textContent.split(': ')[1] ? 
-                      `<button onclick="deletePost(${post.id})" class="delete-btn">刪除</button>` : ''}
-                </div>
-                <div class="comments">
-                    <button onclick="toggleComments(${post.id})" id="toggle-comments-${post.id}">
-                        ${post.comments.length > 0 ? '展開留言 (' + post.comments.length + ')' : '暫無留言'}
-                    </button>
-                    <div id="comments-${post.id}" class="comment-list" style="display: none;">
-                        ${renderComments(post.comments, post.id)}
+            const postsDiv = document.getElementById('userPosts');
+            postsDiv.innerHTML = posts.map(post => `
+                <div class="post">
+                    <p>${post.content}</p>
+                    ${post.image_url ? `<img src="${post.image_url}" alt="貼文圖片" class="post-image">` : ''}
+                    <small>發布時間: ${new Date(post.created_at).toLocaleString()}</small>
+                    <div class="interactions">
+                        ${post.username === document.getElementById('currentUser').textContent.split(': ')[1] ? 
+                        `<button onclick="deletePost(${post.id})" class="delete-btn">刪除</button>` : ''}
+                    </div>
+                    <div class="comments">
+                        <button onclick="toggleComments(${post.id})" id="toggle-comments-${post.id}">
+                            ${post.comments.length > 0 ? '展開留言 (' + post.comments.length + ')' : '暫無留言'}
+                        </button>
+                        <div id="comments-${post.id}" class="comment-list" style="display: none;">
+                            ${renderComments(post.comments, post.id)}
+                        </div>
                     </div>
                 </div>
-            </div>
-        `).join('');
-    }
-        async function loadProfile() {
-        const currentUserResponse = await fetch('/user');
-        if (!currentUserResponse.ok) {
-            window.location.href = '/';
-            return;
+            `).join('');
         }
-        const currentUser = await currentUserResponse.json();
-        document.getElementById('currentUser').textContent = `當前用戶: ${currentUser.username}`;
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const targetUsername = urlParams.get('username');
-        const isCurrentUser = !targetUsername;
-
-        let apiUrl = isCurrentUser ? '/user/posts' : `/profile/${targetUsername}`;
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-            window.location.href = '/';
-            return;
-        }
-        const data = await response.json();
-
-        const user = isCurrentUser ? currentUser : data.user;
-        const posts = isCurrentUser ? data : data.posts;
-
-        document.getElementById('username').textContent = `用戶名稱: ${user.username}`;
-        document.getElementById('avatar').src = user.avatar_url || '/default-avatar.jpg';
-
-        if (isCurrentUser) {
-            document.getElementById('editSection').style.display = 'block';
-        } else {
-            document.getElementById('editSection').style.display = 'none';
-        }
-        loadPosts(posts);
-    }
         async function logout() {
             await fetch('/logout', { method: 'POST' });
             window.location.href = '/';
