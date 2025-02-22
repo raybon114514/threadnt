@@ -232,8 +232,6 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
-            const result = await response.json();
-            alert(response.ok ? result.message : result.error);
             if (response.ok) loadPosts();
         }
 
