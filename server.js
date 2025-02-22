@@ -152,7 +152,42 @@ app.post('/posts', (req, res) => {
         res.status(201).json({ id: this.lastID, content, user_id: userId });
     });
 });
-
+// 刪除貼文
+app.delete('/posts/:id', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: '請先登入' });
+    const userId = req.session.user.id;
+    const postId = req.params.id;
+  
+    // 檢查貼文是否屬於當前用戶
+    db.get('SELECT user_id FROM posts WHERE id = ?', [postId], (err, row) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!row) return res.status(404).json({ error: '貼文不存在' });
+      if (row.user_id !== userId) return res.status(403).json({ error: '無權刪除此貼文' });
+  
+      // 刪除相關按讚和留言
+      db.run('DELETE FROM likes WHERE post_id = ?', [postId], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        db.run('DELETE FROM comments WHERE post_id = ?', [postId], (err) => {
+          if (err) return res.status(500).json({ error: err.message });
+          // 刪除貼文
+          db.run('DELETE FROM posts WHERE id = ?', [postId], function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            if (this.changes === 0) return res.status(404).json({ error: '貼文不存在' });
+            // 若有圖片，刪除檔案
+            if (row.image_url) {
+              const fs = require('fs');
+              const path = require('path');
+              const imagePath = path.join(__dirname, row.image_url);
+              fs.unlink(imagePath, (err) => {
+                if (err) console.error('刪除圖片失敗:', err.message);
+              });
+            }
+            res.json({ message: '貼文已刪除' });
+          });
+        });
+      });
+    });
+  });
 // 按讚
 // 按讚或取消按讚
 app.post('/posts/:id/like', (req, res) => {

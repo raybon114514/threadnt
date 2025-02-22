@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <title>threadnt</title>
     <link rel="stylesheet" href="ui.css">
 </head>
+
 <body>
     <header>
-        <img src="https://www.allrecipes.com/thmb/WyCC-RL8cuAEKfYHsdnzqi64iTc=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/73135-homestyle-potato-chips-ddmfs-0348-3x4-hero-c21021303c8849bbb40c1007bfa9af6e.jpg" alt="首頁" id="homeLogo" onclick="refreshAndScrollToTop()">
+        <img src="https://www.allrecipes.com/thmb/WyCC-RL8cuAEKfYHsdnzqi64iTc=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/73135-homestyle-potato-chips-ddmfs-0348-3x4-hero-c21021303c8849bbb40c1007bfa9af6e.jpg"
+            alt="首頁" id="homeLogo" onclick="refreshAndScrollToTop()">
         <h1>不脆</h1>
     </header>
     <div id="auth">
@@ -20,6 +23,7 @@
     </div>
     <div id="postForm" style="display: none;">
         <textarea id="content" placeholder="分享你的想法..."></textarea>
+        <input type="file" id="image" accept="image/*">
         <button onclick="submitPost()">發帖</button>
     </div>
     <div id="posts"></div>
@@ -79,22 +83,21 @@
         }
 
         async function loadPosts() {
-    const response = await fetch('/posts');
-    const posts = await response.json();
-    const userResponse = await fetch('/user');
-    const user = userResponse.ok ? await userResponse.json() : null;
-    const postsDiv = document.getElementById('posts');
-    postsDiv.innerHTML = posts.map(post => {
-        const isLiked = user && post.likes && post.likes.some(like => like.user_id === req.session.user.id);
-        return `
+            const response = await fetch('/posts');
+            const posts = await response.json();
+            const userResponse = await fetch('/user');
+            const currentUser = userResponse.ok ? await userResponse.json() : null;
+            const postsDiv = document.getElementById('posts');
+            postsDiv.innerHTML = posts.map(post => `
             <div class="post">
                 <p>${post.content}</p>
+                ${post.image_url ? `<img src="${post.image_url}" alt="貼文圖片" class="post-image">` : ''}
                 <small>by ${post.username} at ${new Date(post.created_at).toLocaleString()}</small>
                 <div class="interactions">
-                    <button onclick="likePost(${post.id})" class="${isLiked ? 'liked' : ''}">
-                        ${isLiked ? '取消讚' : '讚'} (${post.like_count})
-                    </button>
+                    <button onclick="likePost(${post.id})">讚 (${post.like_count})</button>
                     <button onclick="showCommentForm(${post.id})">留言 (${post.comments.length})</button>
+                    ${currentUser && currentUser.username === post.username ?
+                    `<button onclick="deletePost(${post.id})" class="delete-btn">刪除</button>` : ''}
                 </div>
                 <div id="comment-form-${post.id}" class="comment-form" style="display: none;">
                     <textarea id="comment-${post.id}" placeholder="寫下你的留言..."></textarea>
@@ -107,39 +110,68 @@
                             <small>by ${comment.username} at ${new Date(comment.created_at).toLocaleString()}</small>
                         </div>
                     `).join('')}
+                    </div>
                 </div>
-            </div>
-        `;
-    }).join('');
-}
-
-async function likePost(postId) {
-    const response = await fetch(`/posts/${postId}/like`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-    });
-    const result = await response.json();
-    alert(response.ok ? result.message : result.error);
-    if (response.ok) loadPosts();
-}
+            `).join('');
+        }
+        async function deletePost(postId) {
+            if (confirm('確定要刪除這篇貼文嗎？')) {
+                const response = await fetch(`/posts/${postId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                alert(response.ok ? result.message : result.error);
+                if (response.ok) loadPosts();
+            }
+        }
+        async function likePost(postId) {
+            const response = await fetch(`/posts/${postId}/like`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const result = await response.json();
+            alert(response.ok ? result.message : result.error);
+            if (response.ok) loadPosts();
+        }
 
         async function submitPost() {
             const content = document.getElementById('content').value;
-            if (!content) {
-                alert('請輸入內容！');
-                return;
-            }
-            const response = await fetch('/posts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content })
-            });
-            if (response.ok) {
-                document.getElementById('content').value = '';
-                loadPosts();
+            const imageFile = document.getElementById('image').files[0];
+            const formData = { content };
+
+            if (imageFile) {
+                const reader = new FileReader();
+                reader.onload = async function (e) {
+                    formData.image = e.target.result.split(',')[1];
+                    const response = await fetch('/posts/with-image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
+                    if (response.ok) {
+                        document.getElementById('content').value = '';
+                        document.getElementById('image').value = '';
+                        loadPosts();
+                    } else {
+                        const result = await response.json();
+                        alert(result.error);
+                    }
+                };
+                reader.readAsDataURL(imageFile);
             } else {
-                const result = await response.json();
-                alert(result.error);
+                const response = await fetch('/posts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                if (response.ok) {
+                    document.getElementById('content').value = '';
+                    loadPosts();
+                } else {
+                    const result = await response.json();
+                    alert(result.error);
+                }
             }
         }
 
@@ -187,4 +219,5 @@ async function likePost(postId) {
         loadPosts();
     </script>
 </body>
+
 </html>
