@@ -112,7 +112,34 @@ app.get('/user', (req, res) => {
     if (req.session.user) res.json({ username: req.session.user.username });
     else res.status(401).json({ error: '未登入' });
 });
-
+// 獲取用戶貼文
+app.get('/user/posts', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: '請先登入' });
+    const userId = req.session.user.id;
+    db.all('SELECT * FROM posts WHERE user_id = ? ORDER BY created_at DESC', [userId], (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(rows);
+    });
+  });
+  
+  // 更新密碼
+  app.put('/user/password', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: '請先登入' });
+    const userId = req.session.user.id;
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: '密碼不能為空' });
+  
+    try {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      db.run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, userId], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: '用戶不存在' });
+        res.json({ message: '密碼更新成功' });
+      });
+    } catch (err) {
+      res.status(500).json({ error: '伺服器錯誤: ' + err.message });
+    }
+  });
 // 獲取所有貼文（含讚數和留言）
 app.get('/posts', (req, res) => {
     db.all(`

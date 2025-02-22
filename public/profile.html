@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>用戶中心</title>
+    <link rel="stylesheet" href="/ui.css">
+</head>
+<body>
+    <header>
+        <img src="/logo.png" alt="首頁" id="homeLogo" onclick="window.location.href='/'">
+        <h1>用戶中心</h1>
+    </header>
+    <div id="profile">
+        <h2 id="username"></h2>
+        <button onclick="logout()">登出</button>
+        <h3>修改密碼</h3>
+        <input id="newPassword" type="password" placeholder="新密碼">
+        <button onclick="updatePassword()">更新密碼</button>
+        <p id="status"></p>
+    </div>
+    <h3>我的貼文</h3>
+    <div id="userPosts"></div>
+
+    <script>
+        async function loadProfile() {
+            const response = await fetch('/user');
+            if (!response.ok) {
+                window.location.href = '/';
+                return;
+            }
+            const user = await response.json();
+            document.getElementById('username').textContent = `用戶名稱: ${user.username}`;
+            loadUserPosts();
+        }
+
+        async function loadUserPosts() {
+            const response = await fetch('/user/posts');
+            const posts = await response.json();
+            const postsDiv = document.getElementById('userPosts');
+            postsDiv.innerHTML = posts.map(post => `
+                <div class="post">
+                    <p>${post.content}</p>
+                    ${post.image_url ? `<img src="${post.image_url}" alt="貼文圖片" class="post-image">` : ''}
+                    <small>發布時間: ${new Date(post.created_at).toLocaleString()}</small>
+                    <div class="interactions">
+                        <button onclick="deletePost(${post.id})" class="delete-btn">刪除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function updatePassword() {
+            const newPassword = document.getElementById('newPassword').value;
+            if (!newPassword) {
+                alert('請輸入新密碼');
+                return;
+            }
+            const response = await fetch('/user/password', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: newPassword })
+            });
+            const result = await response.json();
+            alert(response.ok ? result.message : result.error);
+            if (response.ok) document.getElementById('newPassword').value = '';
+        }
+
+        async function deletePost(postId) {
+            if (confirm('確定要刪除這篇貼文嗎？')) {
+                const response = await fetch(`/posts/${postId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                alert(response.ok ? result.message : result.error);
+                if (response.ok) loadUserPosts();
+            }
+        }
+
+        async function logout() {
+            await fetch('/logout', { method: 'POST' });
+            window.location.href = '/';
+        }
+
+        loadProfile();
+    </script>
+</body>
+</html>

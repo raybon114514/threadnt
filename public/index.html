@@ -12,6 +12,7 @@
         <img src="https://www.allrecipes.com/thmb/WyCC-RL8cuAEKfYHsdnzqi64iTc=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/73135-homestyle-potato-chips-ddmfs-0348-3x4-hero-c21021303c8849bbb40c1007bfa9af6e.jpg"
             alt="首頁" id="homeLogo" onclick="refreshAndScrollToTop()">
         <h1>不脆</h1>
+        <button onclick="window.location.href='/profile.html'" id="profileBtn" style="display: none;">用戶中心</button>
     </header>
     <div id="auth">
         <input id="username" placeholder="用戶名" />
@@ -34,15 +35,18 @@
             const userStatus = document.getElementById('userStatus');
             const postForm = document.getElementById('postForm');
             const logoutBtn = document.getElementById('logoutBtn');
+            const profileBtn = document.getElementById('profileBtn');
             if (response.ok) {
                 const user = await response.json();
                 userStatus.textContent = `歡迎，${user.username}`;
                 postForm.style.display = 'block';
                 logoutBtn.style.display = 'inline';
+                profileBtn.style.display = 'inline';
             } else {
                 userStatus.textContent = '請登入';
                 postForm.style.display = 'none';
                 logoutBtn.style.display = 'none';
+                profileBtn.style.display = 'none';
             }
         }
 
