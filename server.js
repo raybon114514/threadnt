@@ -64,7 +64,11 @@ db.serialize(() => {
       FOREIGN KEY (post_id) REFERENCES posts(id)
     )
   `);
-  /*db.run('ALTER TABLE posts ADD COLUMN image_url TEXT', (err) => {
+    /*db.run('ALTER TABLE users ADD COLUMN avatar_url TEXT', (err) => {
+        if (err) console.error('新增 avatar_url 失敗:', err.message);
+        else console.log('已新增 avatar_url 欄位到 users 表');
+    });
+  /b.run('ALTER TABLE posts ADD COLUMN image_url TEXT', (err) => {
     if (err) {
       console.error('執行 SQL 失敗:', err.message);
     } else {
@@ -109,14 +113,47 @@ app.post('/logout', (req, res) => {
 
 // 獲取當前用戶
 app.get('/user', (req, res) => {
-    if (req.session.user) res.json({ username: req.session.user.username });
-    else res.status(401).json({ error: '未登入' });
-});
+    if (req.session.user) {
+      db.get('SELECT username, avatar_url FROM users WHERE id = ?', [req.session.user.id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ username: row.username, avatar_url: row.avatar_url });
+      });
+    } else {
+      res.status(401).json({ error: '未登入' });
+    }
+  });
+// 上傳頭像
+app.post('/user/avatar', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: '請先登入' });
+    const { avatar } = req.body;
+    const userId = req.session.user.id;
+  
+    try {
+      if (!avatar) return res.status(400).json({ error: '請選擇頭像圖片' });
+      const avatarBuffer = Buffer.from(avatar, 'base64');
+      const fileName = `avatar-${userId}-${Date.now()}.jpg`;
+      const filePath = path.join(__dirname, 'uploads', fileName);
+      const uploadsDir = path.join(__dirname, 'uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      fs.writeFileSync(filePath, avatarBuffer);
+      const avatarUrl = `/uploads/${fileName}`;
+  
+      db.run('UPDATE users SET avatar_url = ? WHERE id = ?', [avatarUrl, userId], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: '用戶不存在' });
+        res.json({ message: '頭像更新成功', avatarUrl });
+      });
+    } catch (err) {
+      res.status(500).json({ error: '頭像上傳失敗: ' + err.message });
+    }
+  });
 // 獲取用戶貼文
 app.get('/user/posts', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: '請先登入' });
     const userId = req.session.user.id;
-    db.all('SELECT * FROM posts WHERE user_id = ? ORDER BY created_at DESC', [userId], (err, rows) => {
+    db.all('SELECT p.*, u.username, u.avatar_url FROM posts p JOIN users u ON p.user_id = u.id WHERE p.user_id = ? ORDER BY p.created_at DESC', [userId], (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json(rows);
     });
@@ -143,7 +180,7 @@ app.get('/user/posts', (req, res) => {
 // 獲取所有貼文（含讚數和留言）
 app.get('/posts', (req, res) => {
     db.all(`
-      SELECT p.id, p.content, p.created_at, p.image_url, u.username,
+      SELECT p.id, p.content, p.created_at, p.image_url, u.username, u.avatar_url,
              (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS like_count,
              (SELECT GROUP_CONCAT(c.content || '|' || uc.username || '|' || c.created_at, '||') 
               FROM comments c JOIN users uc ON c.user_id = uc.id WHERE c.post_id = p.id) AS comments
@@ -156,6 +193,7 @@ app.get('/posts', (req, res) => {
         id: row.id,
         content: row.content,
         username: row.username,
+        avatar_url: row.avatar_url,
         created_at: row.created_at,
         image_url: row.image_url,
         like_count: row.like_count,
@@ -166,7 +204,7 @@ app.get('/posts', (req, res) => {
       }));
       res.json(posts);
     });
-  });
+});
 
 // 新增貼文
 app.post('/posts', (req, res) => {

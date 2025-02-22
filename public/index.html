@@ -94,13 +94,17 @@
             const postsDiv = document.getElementById('posts');
             postsDiv.innerHTML = posts.map(post => `
             <div class="post">
+                <div class="post-header">
+                    <img src="${post.avatar_url || '/default-avatar.jpg'}" alt="${post.username} 的頭像" class="avatar">
+                    <span>${post.username}</span>
+                </div>
                 <p>${post.content}</p>
                 ${post.image_url ? `<img src="${post.image_url}" alt="貼文圖片" class="post-image">` : ''}
-                <small>by ${post.username} at ${new Date(post.created_at).toLocaleString()}</small>
+                <small>${new Date(post.created_at).toLocaleString()}</small>
                 <div class="interactions">
                     <button onclick="likePost(${post.id})">讚 (${post.like_count})</button>
                     <button onclick="showCommentForm(${post.id})">留言 (${post.comments.length})</button>
-                    ${currentUser && currentUser.username === post.username ?
+                    ${currentUser && currentUser.username === post.username ? 
                     `<button onclick="deletePost(${post.id})" class="delete-btn">刪除</button>` : ''}
                 </div>
                 <div id="comment-form-${post.id}" class="comment-form" style="display: none;">

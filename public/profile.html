@@ -1,18 +1,24 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <title>用戶中心</title>
     <link rel="stylesheet" href="/ui.css">
 </head>
+
 <body>
     <header>
-        <img src="/logo.png" alt="首頁" id="homeLogo" onclick="window.location.href='/'">
+        <img src="https://www.allrecipes.com/thmb/WyCC-RL8cuAEKfYHsdnzqi64iTc=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/73135-homestyle-potato-chips-ddmfs-0348-3x4-hero-c21021303c8849bbb40c1007bfa9af6e.jpg" alt="首頁" id="homeLogo" onclick="window.location.href='/'">
         <h1>用戶中心</h1>
     </header>
     <div id="profile">
+        <img id="avatar" class="avatar" alt="用戶頭像">
         <h2 id="username"></h2>
         <button onclick="logout()">登出</button>
+        <h3>修改頭像</h3>
+        <input type="file" id="avatarInput" accept="image/*">
+        <button onclick="uploadAvatar()">上傳頭像</button>
         <h3>修改密碼</h3>
         <input id="newPassword" type="password" placeholder="新密碼">
         <button onclick="updatePassword()">更新密碼</button>
@@ -30,9 +36,33 @@
             }
             const user = await response.json();
             document.getElementById('username').textContent = `用戶名稱: ${user.username}`;
+            const avatarImg = document.getElementById('avatar');
+            avatarImg.src = user.avatar_url || '/pt.jpg'; // 預設頭像
             loadUserPosts();
         }
-
+        async function uploadAvatar() {
+            const avatarFile = document.getElementById('avatarInput').files[0];
+            if (!avatarFile) {
+                alert('請選擇頭像圖片');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = async function (e) {
+                const avatarData = e.target.result.split(',')[1];
+                const response = await fetch('/user/avatar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ avatar: avatarData })
+                });
+                const result = await response.json();
+                alert(response.ok ? result.message : result.error);
+                if (response.ok) {
+                    document.getElementById('avatar').src = result.avatarUrl;
+                    document.getElementById('avatarInput').value = '';
+                }
+            };
+            reader.readAsDataURL(avatarFile);
+        }
         async function loadUserPosts() {
             const response = await fetch('/user/posts');
             const posts = await response.json();
@@ -85,4 +115,5 @@
         loadProfile();
     </script>
 </body>
+
 </html>

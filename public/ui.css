@@ -237,3 +237,21 @@ h1 {
 #profile button:hover, #profileBtn:hover {
     background: #218838;
 }
+.avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 10px;
+}
+
+.post-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.post-header span {
+    font-weight: bold;
+    color: #333;
+}
