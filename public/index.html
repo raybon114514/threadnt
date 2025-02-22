@@ -175,13 +175,18 @@
                         <button onclick="submitComment(${post.id})">送出</button>
                     </div>
                     <div class="comments">
-                        ${renderComments(post.comments)}
+                        <button onclick="toggleComments(${post.id})" id="toggle-comments-${post.id}">
+                            ${post.comments.length > 0 ? '展開留言 (' + post.comments.length + ')' : '暫無留言'}
+                        </button>
+                        <div id="comments-${post.id}" class="comment-list" style="display: none;">
+                            ${renderComments(post.comments, post.id)}
+                        </div>
                     </div>
                 </div>
             `).join('');
         }
 
-        function renderComments(comments) {
+        function renderComments(comments, postId) {
             return comments.map(comment => `
                 <div class="comment">
                     <div class="comment-header">
@@ -196,12 +201,42 @@
                         <button onclick="submitReply(${comment.post_id}, ${comment.id})">送出</button>
                     </div>
                     <div class="replies">
-                        ${renderComments(comment.replies)}
+                        ${comment.replies.length > 0 ? `
+                            <button onclick="toggleReplies(${comment.id})" id="toggle-replies-${comment.id}">
+                                展開回覆 (${comment.replies.length})
+                            </button>
+                            <div id="replies-${comment.id}" class="reply-list" style="display: none;">
+                                ${renderComments(comment.replies, postId)}
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `).join('');
         }
+        function toggleComments(postId) {
+            const commentsDiv = document.getElementById(`comments-${postId}`);
+            const toggleBtn = document.getElementById(`toggle-comments-${postId}`);
+            if (commentsDiv.style.display === 'none') {
+                commentsDiv.style.display = 'block';
+                toggleBtn.textContent = '收合留言';
+            } else {
+                commentsDiv.style.display = 'none';
+                toggleBtn.textContent = `展開留言 (${toggleBtn.textContent.match(/\d+/) || 0})`;
+            }
+        }
 
+        function toggleReplies(commentId) {
+            const repliesDiv = document.getElementById(`replies-${commentId}`);
+            const toggleBtn = document.getElementById(`toggle-replies-${commentId}`);
+            if (repliesDiv.style.display === 'none') {
+                repliesDiv.style.display = 'block';
+                toggleBtn.textContent = '收合回覆';
+            } else {
+                repliesDiv.style.display = 'none';
+                toggleBtn.textContent = `展開回覆 (${toggleBtn.textContent.match(/\d+/) || 0})`;
+            }
+        }
+        
         function showReplyForm(commentId) {
             const form = document.getElementById(`reply-form-${commentId}`);
             form.style.display = form.style.display === 'none' ? 'block' : 'none';
