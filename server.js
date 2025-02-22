@@ -101,7 +101,7 @@ app.post('/login', (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: '用戶名和密碼不能為空' });
     db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
-        if (err || !user) return res.status(400).json({ error: '用戶不存在' });
+        if (err || !user) return res.status(400).json({ error: '用戶不存在，請選擇註冊' });
         const match = await bcrypt.compare(password, user.password);
         if (!match) return res.status(400).json({ error: '密碼錯誤' });
         req.session.user = { id: user.id, username: user.username };
@@ -194,6 +194,25 @@ app.get('/user/posts', (req, res) => {
     } catch (err) {
       res.status(500).json({ error: '伺服器錯誤: ' + err.message });
     }
+  });
+  // 更新用戶名稱
+app.put('/user/username', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: '請先登入' });
+    const userId = req.session.user.id;
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ error: '用戶名稱不能為空' });
+  
+    db.run('UPDATE users SET username = ? WHERE id = ?', [username, userId], function (err) {
+      if (err) {
+        if (err.message.includes('UNIQUE constraint')) {
+          return res.status(400).json({ error: '用戶名稱已存在' });
+        }
+        return res.status(500).json({ error: err.message });
+      }
+      if (this.changes === 0) return res.status(404).json({ error: '用戶不存在' });
+      req.session.user.username = username; // 更新 session
+      res.json({ message: '用戶名稱更新成功', username });
+    });
   });
 // 獲取所有貼文（含讚數和留言）
 app.get('/posts', (req, res) => {
