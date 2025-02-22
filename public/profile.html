@@ -22,6 +22,11 @@
         <h3>修改用戶名稱</h3>
         <input id="newUsername" placeholder="新用戶名稱">
         <button onclick="updateUsername()">更新名稱</button><br><br>
+        <h3>修改電子郵件</h3>
+        <input id="newEmail" type="email" placeholder="新電子郵件">
+        <button onclick="sendEmailUpdateVerification()">發送驗證碼</button>
+        <input id="emailVerificationCode" placeholder="輸入驗證碼">
+        <button onclick="updateEmail()">更新電子郵件</button><br><br>
         <h3>修改頭像</h3>
         <div class="file-upload">
             <input type="file" id="avatarInput" accept="image/*" style="display: none;">
@@ -37,6 +42,43 @@
     <div id="userPosts"></div>
 
     <script>
+        async function sendEmailUpdateVerification() {
+            const newEmail = document.getElementById('newEmail').value;
+            if (!newEmail) {
+                alert('請輸入新電子郵件');
+                return;
+            }
+            const response = await fetch('/send-email-update-verification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: newEmail })
+            });
+            const result = await response.json();
+            alert(response.ok ? result.message : result.error);
+            if (response.ok) {
+                document.getElementById('emailVerificationCode').focus();
+            }
+        }
+
+        async function updateEmail() {
+            const newEmail = document.getElementById('newEmail').value;
+            const verificationCode = document.getElementById('emailVerificationCode').value;
+            if (!newEmail || !verificationCode) {
+                alert('請輸入新電子郵件和驗證碼');
+                return;
+            }
+            const response = await fetch('/user/email', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: newEmail, verificationCode })
+            });
+            const result = await response.json();
+            alert(response.ok ? result.message : result.error);
+            if (response.ok) {
+                document.getElementById('newEmail').value = '';
+                document.getElementById('emailVerificationCode').value = '';
+            }
+        }
         async function loadProfile() {
             const response = await fetch('/user');
             if (!response.ok) {

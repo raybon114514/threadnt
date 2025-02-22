@@ -338,6 +338,11 @@ h1 {
     font-size: 16px;
 }
 
+#profile button:hover {
+    background: #218838;
+    transform: scale(1.05);
+}
+
 #profile button, #profileBtn {
     padding: 10px 20px;
     background: #28a745;
