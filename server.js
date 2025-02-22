@@ -64,7 +64,23 @@ db.serialize(() => {
       FOREIGN KEY (post_id) REFERENCES posts(id)
     )
   `);
-    /*db.run('ALTER TABLE comments ADD COLUMN parent_id INTEGER', (err) => {
+    /*db.run('ALTER TABLE users ADD COLUMN email TEXT', (err) => {
+        if (err) {
+        console.error('新增 email 欄位失敗:', err.message);
+        } else {
+        console.log('已新增 email 欄位到 users 表');
+        }
+    });
+
+    // 為 email 欄位添加唯一索引
+    db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)', (err) => {
+        if (err) {
+        console.error('新增 email 唯一索引失敗:', err.message);
+        } else {
+        console.log('已為 email 欄位新增唯一索引');
+        }
+    });
+    db.run('ALTER TABLE comments ADD COLUMN parent_id INTEGER', (err) => {
         if (err) console.error('新增 parent_id 失敗:', err.message);
         else console.log('已新增 parent_id 欄位到 comments 表');
     });
@@ -72,7 +88,7 @@ db.serialize(() => {
         if (err) console.error('新增 avatar_url 失敗:', err.message);
         else console.log('已新增 avatar_url 欄位到 users 表');
     });
-  /b.run('ALTER TABLE posts ADD COLUMN image_url TEXT', (err) => {
+  /db.run('ALTER TABLE posts ADD COLUMN image_url TEXT', (err) => {
     if (err) {
       console.error('執行 SQL 失敗:', err.message);
     } else {
@@ -82,19 +98,32 @@ db.serialize(() => {
 });
 
 // 註冊路由
+// 註冊路由
 app.post('/register', async (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: '用戶名和密碼不能為空' });
+    const { username, email, password, confirmPassword } = req.body;
+    if (!username || !email || !password || !confirmPassword) {
+      return res.status(400).json({ error: '所有欄位均為必填' });
+    }
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: '密碼與確認密碼不一致' });
+    }
+  
     try {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        db.run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword], function (err) {
-            if (err) return res.status(400).json({ error: '用戶名已存在' });
-            res.status(201).json({ message: '註冊成功', userId: this.lastID });
+      const hashedPassword = await bcrypt.hash(password, 10);
+      db.run('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', 
+        [username, email, hashedPassword], function (err) {
+          if (err) {
+            if (err.message.includes('UNIQUE constraint')) {
+              return res.status(400).json({ error: '用戶名稱或電子郵件已存在' });
+            }
+            return res.status(500).json({ error: err.message });
+          }
+          res.status(201).json({ message: '註冊成功', userId: this.lastID });
         });
     } catch (err) {
-        res.status(500).json({ error: '伺服器錯誤' });
+      res.status(500).json({ error: '伺服器錯誤' });
     }
-});
+  });
 
 // 登入路由
 app.post('/login', (req, res) => {
