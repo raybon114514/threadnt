@@ -6,6 +6,8 @@ const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
 const app = express();
+require('dotenv').config();
+const nodemailer = require('nodemailer');
 
 //app.use(express.json());
 app.use(bodyParser.json({ limit: '10mb' })); // 取代原有 express.json()
@@ -100,31 +102,81 @@ db.serialize(() => {
 // 註冊路由
 // 註冊路由
 app.post('/register', async (req, res) => {
-    const { username, email, password, confirmPassword } = req.body;
-    if (!username || !email || !password || !confirmPassword) {
-      return res.status(400).json({ error: '所有欄位均為必填' });
-    }
-    if (password !== confirmPassword) {
-      return res.status(400).json({ error: '密碼與確認密碼不一致' });
-    }
-  
-    try {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      db.run('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', 
-        [username, email, hashedPassword], function (err) {
-          if (err) {
-            if (err.message.includes('UNIQUE constraint')) {
-              return res.status(400).json({ error: '用戶名稱或電子郵件已存在' });
-            }
-            return res.status(500).json({ error: err.message });
-          }
-          res.status(201).json({ message: '註冊成功', userId: this.lastID });
-        });
-    } catch (err) {
-      res.status(500).json({ error: '伺服器錯誤' });
-    }
-  });
+  const { username, email, password, confirmPassword, verificationCode } = req.body;
+  if (!username || !email || !password || !confirmPassword || !verificationCode) {
+    return res.status(400).json({ error: '所有欄位均為必填' });
+  }
+  if (password !== confirmPassword) {
+    return res.status(400).json({ error: '密碼與確認密碼不一致' });
+  }
 
+  const storedCode = verificationCodes.get(email);
+  if (!storedCode || storedCode !== verificationCode) {
+    return res.status(400).json({ error: '驗證碼無效或已過期' });
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    db.run('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', 
+      [username, email, hashedPassword], function (err) {
+        if (err) {
+          if (err.message.includes('UNIQUE constraint')) {
+            return res.status(400).json({ error: '用戶名稱或電子郵件已存在' });
+          }
+          return res.status(500).json({ error: err.message });
+        }
+        verificationCodes.delete(email);
+        res.status(201).json({ message: '註冊成功', userId: this.lastID });
+      });
+  } catch (err) {
+    res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+// 儲存驗證碼（臨時用記憶體）
+const verificationCodes = new Map();
+
+// 生成 6 位驗證碼
+function generateCode() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+app.post('/send-verification', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: '請輸入電子郵件' });
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: '請輸入有效的電子郵件地址' });
+  }
+
+  // 檢查 email 是否已註冊
+  db.get('SELECT id FROM users WHERE email = ?', [email], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (row) return res.status(400).json({ error: '此電子郵件已被註冊' });
+
+    const code = generateCode();
+    verificationCodes.set(email, code);
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: '您的驗證碼',
+      text: `您的驗證碼是：${code}，請在 5 分鐘內輸入以完成註冊。`
+    };
+
+    transporter.sendMail(mailOptions, (err) => {
+      if (err) return res.status(500).json({ error: '發送驗證碼失敗: ' + err.message });
+      res.json({ message: '驗證碼已發送，請檢查您的電子郵件' });
+    });
+  });
+});
 // 登入路由
 app.post('/login', (req, res) => {
     const { username, password } = req.body;

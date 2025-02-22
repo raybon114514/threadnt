@@ -24,8 +24,10 @@
         <button onclick="showRegisterForm()">註冊</button>
         <button onclick="login()">登入</button>
         <div id="registerExtra" style="display: none;">
-            <input id="confirmPassword" type="password" placeholder="再次確認密碼">
             <input id="email" type="email" placeholder="電子郵件">
+            <input id="confirmPassword" type="password" placeholder="再次確認密碼">
+            <button onclick="sendVerificationCode()">發送驗證碼</button>
+            <input id="verificationCode" placeholder="輸入驗證碼">
             <button onclick="register()">提交註冊</button>
         </div>
         <p id="userStatus"></p>
@@ -42,8 +44,25 @@
 
     <script>
         function showRegisterForm() {
-        const extraFields = document.getElementById('registerExtra');
-        extraFields.style.display = 'block';
+            document.getElementById('registerExtra').style.display = 'block';
+        }
+
+        async function sendVerificationCode() {
+            const email = document.getElementById('email').value;
+            if (!email) {
+                alert('請輸入電子郵件');
+                return;
+            }
+            const response = await fetch('/send-verification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            const result = await response.json();
+            alert(response.ok ? result.message : result.error);
+            if (response.ok) {
+                document.getElementById('verificationCode').focus();
+            }
         }
         async function checkUser() {
             const response = await fetch('/user');
@@ -79,9 +98,9 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
+            const verificationCode = document.getElementById('verificationCode').value;
 
-            // 前端驗證
-            if (!username || !email || !password || !confirmPassword) {
+            if (!username || !email || !password || !confirmPassword || !verificationCode) {
                 alert('所有欄位均為必填');
                 return;
             }
@@ -98,7 +117,7 @@
             const response = await fetch('/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, email, password, confirmPassword })
+                body: JSON.stringify({ username, email, password, confirmPassword, verificationCode })
             });
             const result = await response.json();
             alert(response.ok ? result.message : result.error);
@@ -107,6 +126,7 @@
                 document.getElementById('email').value = '';
                 document.getElementById('password').value = '';
                 document.getElementById('confirmPassword').value = '';
+                document.getElementById('verificationCode').value = '';
                 document.getElementById('registerExtra').style.display = 'none';
             }
         }
