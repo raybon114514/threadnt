@@ -16,16 +16,22 @@ body {
 header {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between; /* 左右分佈 */
     margin-bottom: 20px;
+    padding: 0 10px;
 }
 
-#homeLogo {
+#home {
     width: 50px;
     height: 50px;
     cursor: pointer;
     margin-right: 10px;
     transition: transform 0.3s;
+}
+
+#homeLogo {
+    width: 50px;
+    height: 50px;
 }
 
 #homeLogo:hover {
@@ -72,11 +78,25 @@ h1 {
 }
 
 #logoutBtn {
+    padding: 10px 20px;
     background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s, transform 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 #logoutBtn:hover {
     background: #b02a37;
+    transform: scale(1.05);
+}
+
+#logoutBtn:active {
+    transform: scale(0.98);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 #userStatus {
@@ -200,6 +220,58 @@ h1 {
     font-size: 12px;
     color: #888;
 }
+/* 回覆按鈕 */
+.comment button {
+    padding: 6px 12px;
+    background: #17a2b8; /* 青藍色 */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.3s, transform 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.comment button:hover {
+    background: #138496; /* 深青藍 */
+    transform: translateY(-2px); /* 懸停時微抬 */
+}
+
+.comment button:active {
+    transform: scale(0.95); /* 點擊時縮小 */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* 上傳圖片按鈕 */
+#postForm button, #profile button {
+    padding: 10px 20px;
+    background: #28a745; /* 綠色 */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s, transform 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    position: relative;
+}
+
+#postForm button:hover, #profile button:hover {
+    background: #218838; /* 深綠 */
+    transform: scale(1.05); /* 懸停時放大 */
+}
+
+#postForm button:active, #profile button:active {
+    transform: scale(0.98); /* 點擊時縮小 */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 添加圖標提示（可選） */
+#postForm button::before, #profile button::before {
+    content: ''; /* 相機圖標 */
+    margin-right: 5px;
+}
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
@@ -254,4 +326,65 @@ h1 {
 .post-header span {
     font-weight: bold;
     color: #333;
+}
+.replies {
+    margin-left: 20px;
+    border-left: 2px solid #ddd;
+    padding-left: 10px;
+}
+
+.reply-form {
+    margin-top: 10px;
+}
+
+.reply-form textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    resize: none;
+    margin-bottom: 10px;
+}
+
+.comment-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+/* 檔案上傳容器 */
+.file-upload {
+    margin-bottom: 10px;
+    display: inline-block;
+}
+
+/* 自訂檔案選擇按鈕 */
+.file-btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background: #28a745; /* 與上傳按鈕一致的綠色 */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s, transform 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    text-align: center;
+}
+
+.file-btn:hover {
+    background: #218838; /* 深綠 */
+    transform: scale(1.05); /* 懸停放大 */
+}
+
+.file-btn:active {
+    transform: scale(0.98); /* 點擊縮小 */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 添加圖標提示 */
+.file-btn::before {
+    content: '📷'; /* 相機圖標 */
+    margin-right: 5px;
 }

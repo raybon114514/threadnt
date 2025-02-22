@@ -17,7 +17,10 @@
         <h2 id="username"></h2>
         <button onclick="logout()">登出</button>
         <h3>修改頭像</h3>
-        <input type="file" id="avatarInput" accept="image/*">
+        <div class="file-upload">
+            <input type="file" id="avatarInput" accept="image/*" style="display: none;">
+            <label for="avatarInput" class="file-btn">選擇頭像</label>
+        </div>
         <button onclick="uploadAvatar()">上傳頭像</button>
         <h3>修改密碼</h3>
         <input id="newPassword" type="password" placeholder="新密碼">
@@ -37,8 +40,13 @@
             const user = await response.json();
             document.getElementById('username').textContent = `用戶名稱: ${user.username}`;
             const avatarImg = document.getElementById('avatar');
-            avatarImg.src = user.avatar_url || '/pt.jpg'; // 預設頭像
+            avatarImg.src = user.avatar_url || '/default-avatar.jpg';
             loadUserPosts();
+        }
+
+        async function logout() {
+            await fetch('/logout', { method: 'POST' });
+            window.location.href = '/';
         }
         async function uploadAvatar() {
             const avatarFile = document.getElementById('avatarInput').files[0];
@@ -63,6 +71,7 @@
             };
             reader.readAsDataURL(avatarFile);
         }
+
         async function loadUserPosts() {
             const response = await fetch('/user/posts');
             const posts = await response.json();
@@ -74,6 +83,30 @@
                     <small>發布時間: ${new Date(post.created_at).toLocaleString()}</small>
                     <div class="interactions">
                         <button onclick="deletePost(${post.id})" class="delete-btn">刪除</button>
+                    </div>
+                    <div class="comments">
+                        ${renderComments(post.comments)}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderComments(comments) {
+            return comments.map(comment => `
+                <div class="comment">
+                    <div class="comment-header">
+                        <img src="${comment.avatar_url || '/default-avatar.jpg'}" alt="${comment.username} 的頭像" class="avatar">
+                        <span>${comment.username}</span>
+                    </div>
+                    <p>${comment.content}</p>
+                    <small>${new Date(comment.created_at).toLocaleString()}</small>
+                    <button onclick="showReplyForm(${comment.id})">回覆</button>
+                    <div id="reply-form-${comment.id}" class="reply-form" style="display: none;">
+                        <textarea id="reply-${comment.id}" placeholder="回覆留言..."></textarea>
+                        <button onclick="submitReply(${comment.post_id}, ${comment.id})">送出</button>
+                    </div>
+                    <div class="replies">
+                        ${renderComments(comment.replies)}
                     </div>
                 </div>
             `).join('');
@@ -107,10 +140,7 @@
             }
         }
 
-        async function logout() {
-            await fetch('/logout', { method: 'POST' });
-            window.location.href = '/';
-        }
+
 
         loadProfile();
     </script>

@@ -13,18 +13,21 @@
             alt="首頁" id="homeLogo" onclick="refreshAndScrollToTop()">
         <h1>不脆</h1>
         <button onclick="window.location.href='/profile.html'" id="profileBtn" style="display: none;">用戶中心</button>
+        <button onclick="logout()" id="logoutBtn" style="display: none;">登出</button>
     </header>
     <div id="auth">
         <input id="username" placeholder="用戶名" />
         <input id="password" type="password" placeholder="密碼" />
         <button onclick="register()">註冊</button>
         <button onclick="login()">登入</button>
-        <button onclick="logout()" id="logoutBtn" style="display: none;">登出</button>
         <p id="userStatus"></p>
     </div>
     <div id="postForm" style="display: none;">
         <textarea id="content" placeholder="分享你的想法..."></textarea>
-        <input type="file" id="image" accept="image/*">
+        <div class="file-upload">
+            <input type="file" id="image" accept="image/*" style="display: none;">
+            <label for="image" class="file-btn">選擇圖片</label>
+        </div>
         <button onclick="submitPost()">發帖</button>
     </div>
     <div id="posts"></div>
@@ -32,24 +35,29 @@
     <script>
         async function checkUser() {
             const response = await fetch('/user');
-            const userStatus = document.getElementById('userStatus');
+            const authDiv = document.getElementById('auth');
             const postForm = document.getElementById('postForm');
             const logoutBtn = document.getElementById('logoutBtn');
             const profileBtn = document.getElementById('profileBtn');
             if (response.ok) {
                 const user = await response.json();
-                userStatus.textContent = `歡迎，${user.username}`;
+                authDiv.style.display = 'none'; // 隱藏登入表單
                 postForm.style.display = 'block';
                 logoutBtn.style.display = 'inline';
                 profileBtn.style.display = 'inline';
             } else {
-                userStatus.textContent = '請登入';
+                authDiv.style.display = 'block';
                 postForm.style.display = 'none';
                 logoutBtn.style.display = 'none';
                 profileBtn.style.display = 'none';
             }
         }
 
+        async function logout() {
+            await fetch('/logout', { method: 'POST' });
+            alert('已登出');
+            window.location.reload(); // 刷新頁面
+        }
         async function register() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
@@ -79,12 +87,7 @@
             }
         }
 
-        async function logout() {
-            await fetch('/logout', { method: 'POST' });
-            alert('已登出');
-            checkUser();
-            loadPosts();
-        }
+
 
         async function loadPosts() {
             const response = await fetch('/posts');
@@ -93,34 +96,75 @@
             const currentUser = userResponse.ok ? await userResponse.json() : null;
             const postsDiv = document.getElementById('posts');
             postsDiv.innerHTML = posts.map(post => `
-            <div class="post">
-                <div class="post-header">
-                    <img src="${post.avatar_url || '/default-avatar.jpg'}" alt="${post.username} 的頭像" class="avatar">
-                    <span>${post.username}</span>
-                </div>
-                <p>${post.content}</p>
-                ${post.image_url ? `<img src="${post.image_url}" alt="貼文圖片" class="post-image">` : ''}
-                <small>${new Date(post.created_at).toLocaleString()}</small>
-                <div class="interactions">
-                    <button onclick="likePost(${post.id})">讚 (${post.like_count})</button>
-                    <button onclick="showCommentForm(${post.id})">留言 (${post.comments.length})</button>
-                    ${currentUser && currentUser.username === post.username ? 
-                    `<button onclick="deletePost(${post.id})" class="delete-btn">刪除</button>` : ''}
-                </div>
-                <div id="comment-form-${post.id}" class="comment-form" style="display: none;">
-                    <textarea id="comment-${post.id}" placeholder="寫下你的留言..."></textarea>
-                    <button onclick="submitComment(${post.id})">送出</button>
-                </div>
-                <div class="comments">
-                    ${post.comments.map(comment => `
-                        <div class="comment">
-                            <p>${comment.content}</p>
-                            <small>by ${comment.username} at ${new Date(comment.created_at).toLocaleString()}</small>
-                        </div>
-                    `).join('')}
+                <div class="post">
+                    <div class="post-header">
+                        <img src="${post.avatar_url || '/default-avatar.jpg'}" alt="${post.username} 的頭像" class="avatar">
+                        <span>${post.username}</span>
+                    </div>
+                    <p>${post.content}</p>
+                    ${post.image_url ? `<img src="${post.image_url}" alt="貼文圖片" class="post-image">` : ''}
+                    <small>${new Date(post.created_at).toLocaleString()}</small>
+                    <div class="interactions">
+                        <button onclick="likePost(${post.id})">讚 (${post.like_count})</button>
+                        <button onclick="showCommentForm(${post.id})">留言 (${post.comments.length})</button>
+                        ${currentUser && currentUser.username === post.username ? 
+                        `<button onclick="deletePost(${post.id})" class="delete-btn">刪除</button>` : ''}
+                    </div>
+                    <div id="comment-form-${post.id}" class="comment-form" style="display: none;">
+                        <textarea id="comment-${post.id}" placeholder="寫下你的留言..."></textarea>
+                        <button onclick="submitComment(${post.id})">送出</button>
+                    </div>
+                    <div class="comments">
+                        ${renderComments(post.comments)}
                     </div>
                 </div>
             `).join('');
+        }
+
+        function renderComments(comments) {
+            return comments.map(comment => `
+                <div class="comment">
+                    <div class="comment-header">
+                        <img src="${comment.avatar_url || '/default-avatar.jpg'}" alt="${comment.username} 的頭像" class="avatar">
+                        <span>${comment.username}</span>
+                    </div>
+                    <p>${comment.content}</p>
+                    <small>${new Date(comment.created_at).toLocaleString()}</small>
+                    <button onclick="showReplyForm(${comment.id})">回覆</button>
+                    <div id="reply-form-${comment.id}" class="reply-form" style="display: none;">
+                        <textarea id="reply-${comment.id}" placeholder="回覆留言..."></textarea>
+                        <button onclick="submitReply(${comment.post_id}, ${comment.id})">送出</button>
+                    </div>
+                    <div class="replies">
+                        ${renderComments(comment.replies)}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showReplyForm(commentId) {
+            const form = document.getElementById(`reply-form-${commentId}`);
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function submitReply(postId, parentId) {
+            const content = document.getElementById(`reply-${parentId}`).value;
+            if (!content) {
+                alert('請輸入回覆內容！');
+                return;
+            }
+            const response = await fetch(`/posts/${postId}/comment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content, parentId })
+            });
+            if (response.ok) {
+                document.getElementById(`reply-${parentId}`).value = '';
+                loadPosts();
+            } else {
+                const result = await response.json();
+                alert(result.error);
+            }
         }
         async function deletePost(postId) {
             if (confirm('確定要刪除這篇貼文嗎？')) {

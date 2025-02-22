@@ -64,7 +64,11 @@ db.serialize(() => {
       FOREIGN KEY (post_id) REFERENCES posts(id)
     )
   `);
-    /*db.run('ALTER TABLE users ADD COLUMN avatar_url TEXT', (err) => {
+    /*db.run('ALTER TABLE comments ADD COLUMN parent_id INTEGER', (err) => {
+        if (err) console.error('新增 parent_id 失敗:', err.message);
+        else console.log('已新增 parent_id 欄位到 comments 表');
+    });
+    db.run('ALTER TABLE users ADD COLUMN avatar_url TEXT', (err) => {
         if (err) console.error('新增 avatar_url 失敗:', err.message);
         else console.log('已新增 avatar_url 欄位到 users 表');
     });
@@ -153,11 +157,25 @@ app.post('/user/avatar', (req, res) => {
 app.get('/user/posts', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: '請先登入' });
     const userId = req.session.user.id;
-    db.all('SELECT p.*, u.username, u.avatar_url FROM posts p JOIN users u ON p.user_id = u.id WHERE p.user_id = ? ORDER BY p.created_at DESC', [userId], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json(rows);
+    db.all('SELECT p.*, u.username, u.avatar_url FROM posts p JOIN users u ON p.user_id = u.id WHERE p.user_id = ? ORDER BY p.created_at DESC', 
+      [userId], (err, posts) => {
+        if (err) return res.status(500).json({ error: err.message });
+        db.all(`
+          SELECT c.id, c.content, c.created_at, c.post_id, c.parent_id, u.username, u.avatar_url
+          FROM comments c
+          JOIN users u ON c.user_id = u.id
+          WHERE c.post_id IN (${posts.map(p => p.id).join(',')})
+        `, [], (err, comments) => {
+          if (err) return res.status(500).json({ error: err.message });
+          const postsWithComments = posts.map(post => {
+            const postComments = comments.filter(c => c.post_id === post.id);
+            const nestedComments = buildCommentTree(postComments);
+            return { ...post, comments: nestedComments };
+          });
+          res.json(postsWithComments);
+        });
     });
-  });
+});
   
   // 更新密碼
   app.put('/user/password', async (req, res) => {
@@ -179,6 +197,58 @@ app.get('/user/posts', (req, res) => {
   });
 // 獲取所有貼文（含讚數和留言）
 app.get('/posts', (req, res) => {
+    db.all(`
+      SELECT p.id, p.content, p.created_at, p.image_url, u.username, u.avatar_url,
+             (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS like_count
+      FROM posts p
+      JOIN users u ON p.user_id = u.id
+      ORDER BY p.created_at DESC
+    `, [], (err, posts) => {
+      if (err) return res.status(500).json({ error: err.message });
+      db.all(`
+        SELECT c.id, c.content, c.created_at, c.post_id, c.parent_id, u.username, u.avatar_url
+        FROM comments c
+        JOIN users u ON c.user_id = u.id
+      `, [], (err, comments) => {
+        if (err) return res.status(500).json({ error: err.message });
+        const postsWithComments = posts.map(post => {
+          const postComments = comments.filter(c => c.post_id === post.id);
+          const nestedComments = buildCommentTree(postComments);
+          return {
+            id: post.id,
+            content: post.content,
+            username: post.username,
+            avatar_url: post.avatar_url,
+            created_at: post.created_at,
+            image_url: post.image_url,
+            like_count: post.like_count,
+            comments: nestedComments
+          };
+        });
+        res.json(postsWithComments);
+      });
+    });
+  });
+  
+  // 輔助函數：構建嵌套留言樹
+  function buildCommentTree(comments) {
+    const commentMap = new Map();
+    const roots = [];
+    comments.forEach(comment => {
+      comment.replies = [];
+      commentMap.set(comment.id, comment);
+    });
+    comments.forEach(comment => {
+      if (comment.parent_id) {
+        const parent = commentMap.get(comment.parent_id);
+        if (parent) parent.replies.push(comment);
+      } else {
+        roots.push(comment);
+      }
+    });
+    return roots;
+  }
+/*app.get('/posts', (req, res) => {
     db.all(`
       SELECT p.id, p.content, p.created_at, p.image_url, u.username, u.avatar_url,
              (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS like_count,
@@ -204,7 +274,7 @@ app.get('/posts', (req, res) => {
       }));
       res.json(posts);
     });
-});
+});*/
 
 // 新增貼文
 app.post('/posts', (req, res) => {
@@ -282,13 +352,15 @@ app.post('/posts/:id/comment', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: '請先登入' });
     const userId = req.session.user.id;
     const postId = req.params.id;
-    const { content } = req.body;
+    const { content, parentId } = req.body;
     if (!content) return res.status(400).json({ error: '留言內容不能為空' });
-    db.run('INSERT INTO comments (content, user_id, post_id) VALUES (?, ?, ?)', [content, userId, postId], function (err) {
+  
+    db.run('INSERT INTO comments (content, user_id, post_id, parent_id) VALUES (?, ?, ?, ?)', 
+      [content, userId, postId, parentId || null], function (err) {
         if (err) return res.status(500).json({ error: err.message });
-        res.status(201).json({ id: this.lastID, content, user_id: userId });
-    });
-});
+        res.status(201).json({ id: this.lastID, content, user_id: userId, parent_id: parentId });
+      });
+  });
 // 上傳圖片並儲存到貼文
 app.post('/posts/with-image', (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: '請先登入' });
