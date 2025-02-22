@@ -16,9 +16,21 @@ body {
 header {
     display: flex;
     align-items: center;
-    justify-content: space-between; /* 左右分佈 */
+    justify-content: space-between;
     margin-bottom: 20px;
     padding: 0 10px;
+}
+
+#userInfo {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* 間距 */
+}
+
+#currentUser {
+    font-size: 16px;
+    color: #333;
+    font-weight: bold;
 }
 
 #home {
@@ -387,4 +399,63 @@ h1 {
 .file-btn::before {
     content: '📷'; /* 相機圖標 */
     margin-right: 5px;
+}
+
+#profile input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+#profile button {
+    padding: 10px 20px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s, transform 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    margin-right: 10px;
+}
+#auth input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+}
+#registerExtra {
+    margin-top: 10px;
+}
+
+#registerExtra input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+#registerExtra button {
+    padding: 10px 20px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s, transform 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+#registerExtra button:hover {
+    background: #218838;
+    transform: scale(1.05);
 }

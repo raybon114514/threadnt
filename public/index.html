@@ -12,14 +12,22 @@
         <img src="https://www.allrecipes.com/thmb/WyCC-RL8cuAEKfYHsdnzqi64iTc=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/73135-homestyle-potato-chips-ddmfs-0348-3x4-hero-c21021303c8849bbb40c1007bfa9af6e.jpg"
             alt="首頁" id="homeLogo" onclick="refreshAndScrollToTop()">
         <h1>不脆</h1>
-        <button onclick="window.location.href='/profile.html'" id="profileBtn" style="display: none;">用戶中心</button>
-        <button onclick="logout()" id="logoutBtn" style="display: none;">登出</button>
+        <div id="userInfo">
+            <span id="currentUser" style="display: none;"></span>
+            <button onclick="window.location.href='/profile.html'" id="profileBtn" style="display: none;">用戶中心</button>
+            <button onclick="logout()" id="logoutBtn" style="display: none;">登出</button>
+        </div>
     </header>
     <div id="auth">
-        <input id="username" placeholder="用戶名" />
-        <input id="password" type="password" placeholder="密碼" />
-        <button onclick="register()">註冊</button>
+        <input id="username" placeholder="用戶名">
+        <input id="password" type="password" placeholder="密碼">
+        <button onclick="showRegisterForm()">註冊</button>
         <button onclick="login()">登入</button>
+        <div id="registerExtra" style="display: none;">
+            <input id="email" type="email" placeholder="電子郵件">
+            <input id="confirmPassword" type="password" placeholder="再次確認密碼">
+            <button onclick="register()">提交註冊</button>
+        </div>
         <p id="userStatus"></p>
     </div>
     <div id="postForm" style="display: none;">
@@ -33,23 +41,31 @@
     <div id="posts"></div>
 
     <script>
+        function showRegisterForm() {
+        const extraFields = document.getElementById('registerExtra');
+        extraFields.style.display = 'block';
+        }
         async function checkUser() {
             const response = await fetch('/user');
             const authDiv = document.getElementById('auth');
             const postForm = document.getElementById('postForm');
             const logoutBtn = document.getElementById('logoutBtn');
             const profileBtn = document.getElementById('profileBtn');
+            const currentUserSpan = document.getElementById('currentUser');
             if (response.ok) {
                 const user = await response.json();
-                authDiv.style.display = 'none'; // 隱藏登入表單
+                authDiv.style.display = 'none';
                 postForm.style.display = 'block';
                 logoutBtn.style.display = 'inline';
                 profileBtn.style.display = 'inline';
+                currentUserSpan.style.display = 'inline';
+                currentUserSpan.textContent = `當前用戶: ${user.username}`;
             } else {
                 authDiv.style.display = 'block';
                 postForm.style.display = 'none';
                 logoutBtn.style.display = 'none';
                 profileBtn.style.display = 'none';
+                currentUserSpan.style.display = 'none';
             }
         }
 
@@ -60,15 +76,23 @@
         }
         async function register() {
             const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
             const response = await fetch('/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username, email, password, confirmPassword })
             });
             const result = await response.json();
             alert(response.ok ? result.message : result.error);
-            if (response.ok) checkUser();
+            if (response.ok) {
+                document.getElementById('username').value = '';
+                document.getElementById('email').value = '';
+                document.getElementById('password').value = '';
+                document.getElementById('confirmPassword').value = '';
+                document.getElementById('registerExtra').style.display = 'none';
+            }
         }
 
         async function login() {
