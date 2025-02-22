@@ -19,28 +19,31 @@
     <div id="profile">
         <img id="avatar" class="avatar" alt="用戶頭像">
         <h2 id="username"></h2>
-        <h3>修改用戶名稱</h3>
-        <input id="newUsername" placeholder="新用戶名稱">
-        <button onclick="updateUsername()">更新名稱</button><br><br>
-        <h3>修改電子郵件</h3>
-        <input id="newEmail" type="email" placeholder="新電子郵件">
-        <button onclick="sendEmailUpdateVerification()">發送驗證碼</button>
-        <input id="emailVerificationCode" placeholder="輸入驗證碼">
-        <button onclick="updateEmail()">更新電子郵件</button><br><br>
-        <h3>修改頭像</h3>
-        <div class="file-upload">
-            <input type="file" id="avatarInput" accept="image/*" style="display: none;">
-            <label for="avatarInput" class="file-btn">選擇頭像</label>
+        <div id="editSection" style="display: none;">
+            <!-- 原有編輯內容 -->
+            <h3>修改用戶名稱</h3>
+            <input id="newUsername" placeholder="新用戶名稱">
+            <button onclick="updateUsername()">更新名稱</button>
+            <h3>修改電子郵件</h3>
+            <input id="newEmail" type="email" placeholder="新電子郵件">
+            <button onclick="sendEmailUpdateVerification()">發送驗證碼</button>
+            <input id="emailVerificationCode" placeholder="輸入驗證碼">
+            <button onclick="updateEmail()">更新電子郵件</button>
+            <h3>修改頭像</h3>
+            <div class="file-upload">
+                <input type="file" id="avatarInput" accept="image/*" style="display: none;">
+                <label for="avatarInput" class="file-btn">選擇頭像</label>
+            </div>
+            <button onclick="uploadAvatar()">上傳頭像</button>
+            <h3>修改密碼</h3>
+            <input id="newPassword" type="password" placeholder="新密碼">
+            <button onclick="updatePassword()">更新密碼</button>
+            <p id="status"></p>
         </div>
-        <button onclick="uploadAvatar()">上傳頭像</button><br><br>
-        <h3>修改密碼</h3>
-        <input id="newPassword" type="password" placeholder="新密碼">
-        <button onclick="updatePassword()">更新密碼</button>
-        <p id="status"></p>
     </div>
     <h3>我的貼文</h3>
     <div id="userPosts"></div>
-
+    <script src="/user.js"></script>
     <script>
         async function sendEmailUpdateVerification() {
             const newEmail = document.getElementById('newEmail').value;
@@ -79,20 +82,62 @@
                 document.getElementById('emailVerificationCode').value = '';
             }
         }
+        function loadPosts(posts) {
+        const postsDiv = document.getElementById('userPosts');
+        postsDiv.innerHTML = posts.map(post => `
+            <div class="post">
+                <p>${post.content}</p>
+                ${post.image_url ? `<img src="${post.image_url}" alt="貼文圖片" class="post-image">` : ''}
+                <small>發布時間: ${new Date(post.created_at).toLocaleString()}</small>
+                <div class="interactions">
+                    ${post.username === document.getElementById('currentUser').textContent.split(': ')[1] ? 
+                      `<button onclick="deletePost(${post.id})" class="delete-btn">刪除</button>` : ''}
+                </div>
+                <div class="comments">
+                    <button onclick="toggleComments(${post.id})" id="toggle-comments-${post.id}">
+                        ${post.comments.length > 0 ? '展開留言 (' + post.comments.length + ')' : '暫無留言'}
+                    </button>
+                    <div id="comments-${post.id}" class="comment-list" style="display: none;">
+                        ${renderComments(post.comments, post.id)}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
         async function loadProfile() {
-            const response = await fetch('/user');
-            if (!response.ok) {
-                window.location.href = '/';
-                return;
-            }
-            const user = await response.json();
-            document.getElementById('username').textContent = `用戶名稱: ${user.username}`;
-            document.getElementById('currentUser').textContent = `當前用戶: ${user.username}`;
-            const avatarImg = document.getElementById('avatar');
-            avatarImg.src = user.avatar_url || '/default-avatar.jpg';
-            loadUserPosts();
+        const currentUserResponse = await fetch('/user');
+        if (!currentUserResponse.ok) {
+            window.location.href = '/';
+            return;
         }
+        const currentUser = await currentUserResponse.json();
+        document.getElementById('currentUser').textContent = `當前用戶: ${currentUser.username}`;
 
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetUsername = urlParams.get('username');
+        const isCurrentUser = !targetUsername;
+
+        let apiUrl = isCurrentUser ? '/user/posts' : `/profile/${targetUsername}`;
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+            window.location.href = '/';
+            return;
+        }
+        const data = await response.json();
+
+        const user = isCurrentUser ? currentUser : data.user;
+        const posts = isCurrentUser ? data : data.posts;
+
+        document.getElementById('username').textContent = `用戶名稱: ${user.username}`;
+        document.getElementById('avatar').src = user.avatar_url || '/default-avatar.jpg';
+
+        if (isCurrentUser) {
+            document.getElementById('editSection').style.display = 'block';
+        } else {
+            document.getElementById('editSection').style.display = 'none';
+        }
+        loadPosts(posts);
+    }
         async function logout() {
             await fetch('/logout', { method: 'POST' });
             window.location.href = '/';
@@ -124,33 +169,15 @@
         async function loadUserPosts() {
             const response = await fetch('/user/posts');
             const posts = await response.json();
-            const postsDiv = document.getElementById('userPosts');
-            postsDiv.innerHTML = posts.map(post => `
-                <div class="post">
-                    <p>${post.content}</p>
-                    ${post.image_url ? `<img src="${post.image_url}" alt="貼文圖片" class="post-image">` : ''}
-                    <small>發布時間: ${new Date(post.created_at).toLocaleString()}</small>
-                    <div class="interactions">
-                        <button onclick="deletePost(${post.id})" class="delete-btn">刪除</button>
-                    </div>
-                    <div class="comments">
-                        <button onclick="toggleComments(${post.id})" id="toggle-comments-${post.id}">
-                            ${post.comments.length > 0 ? '展開留言 (' + post.comments.length + ')' : '暫無留言'}
-                        </button>
-                        <div id="comments-${post.id}" class="comment-list" style="display: none;">
-                            ${renderComments(post.comments, post.id)}
-                        </div>
-                    </div>
-                </div>
-            `).join('');
+            loadPosts(posts);
         }
 
         function renderComments(comments, postId) {
             return comments.map(comment => `
-                <div class="comment">
+                <div class="comment">   
                     <div class="comment-header">
                         <img src="${comment.avatar_url || '/default-avatar.jpg'}" alt="${comment.username} 的頭像" class="avatar">
-                        <span>${comment.username}</span>
+                        <span class="username" onclick="showUserInfo('${comment.username}')">${comment.username}</span>
                     </div>
                     <p>${comment.content}</p>
                     <small>${new Date(comment.created_at).toLocaleString()}</small>
@@ -228,6 +255,7 @@
 
         loadProfile();
     </script>
+
 </body>
 
 </html>

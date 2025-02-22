@@ -552,6 +552,57 @@ app.post('/posts/with-image', (req, res) => {
     res.status(500).json({ error: '圖片上傳失敗: ' + err.message });
   }
 });
+// 獲取用戶資訊
+app.get('/user/info/:username', (req, res) => {
+  const { username } = req.params;
+  db.get('SELECT username, avatar_url FROM users WHERE username = ?', [username], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(404).json({ error: '用戶不存在' });
+    // 獲取用戶貼文數
+    db.all('SELECT id FROM posts WHERE user_id = (SELECT id FROM users WHERE username = ?)', [username], (err, posts) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({
+        username: user.username,
+        avatar_url: user.avatar_url,
+        post_count: posts.length
+      });
+    });
+  });
+});
+// 獲取指定用戶的資訊和貼文
+app.get('/profile/:username', (req, res) => {
+  const { username } = req.params;
+  db.get('SELECT id, username, avatar_url FROM users WHERE username = ?', [username], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(404).json({ error: '用戶不存在' });
+
+    db.all(`
+      SELECT p.*, u.username, u.avatar_url
+      FROM posts p
+      JOIN users u ON p.user_id = u.id
+      WHERE p.user_id = ? ORDER BY p.created_at DESC
+    `, [user.id], (err, posts) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      // 確保獲取所有相關留言
+      db.all(`
+        SELECT c.id, c.content, c.created_at, c.post_id, c.parent_id, u.username, u.avatar_url
+        FROM comments c
+        JOIN users u ON c.user_id = u.id
+        WHERE c.post_id IN (${posts.map(p => p.id).join(',') || 0})
+      `, [], (err, comments) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        const postsWithComments = posts.map(post => {
+          const postComments = comments.filter(c => c.post_id === post.id);
+          const nestedComments = buildCommentTree(postComments);
+          return { ...post, comments: nestedComments };
+        });
+        res.json({ user, posts: postsWithComments });
+      });
+    });
+  });
+});
 /*app.post('/posts/with-image', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: '請先登入' });
     const { content } = req.body;
